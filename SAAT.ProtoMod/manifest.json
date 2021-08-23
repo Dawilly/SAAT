@@ -1,0 +1,10 @@
+{
+  "Name": "SAAT.ProtoMod",
+  "Author": "Pickles",
+  "Version": "1.0.0",
+  "Description": "Proof of Concept regarding Audio APIs",
+  "UniqueID": "Pickles.SAAT.ProtoMod",
+  "EntryDll": "SAAT.ProtoMod.dll",
+  "MinimumApiVersion": "3.0.0",
+  "UpdateKeys": []
+}

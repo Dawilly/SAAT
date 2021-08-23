@@ -8,4 +8,13 @@
     <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="3.4.0-beta.20210813" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="assets\SinWave.wav">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="manifest.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
