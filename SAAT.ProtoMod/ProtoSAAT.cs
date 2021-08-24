@@ -1,27 +1,35 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 using Microsoft.Xna.Framework.Audio;
 
+using SAAT.API;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 
 namespace SAAT.ProtoMod {
     /// <summary>
-    /// Implementation of <see cref="Mod"/>, providing audio functionality for the proof of concept.
+    /// Implementation of <see cref="Mod"/>, providing proof of concept for audio functionality.
     /// </summary>
     public class ProtoSAAT : Mod {
+        private const string ApiId = "Pickles.SAAT.API";
+
+        private IAudioManager audioApi;
         private ICue sinWaveCue;
-        private SoundEffectInstance sinWaveSfx;
+        private ICue sinOggCue;
+        private string assetPath;
 
         /// <summary>
-        /// Entry Point.
+        /// SMAPI's entry point.
         /// </summary>
         /// <param name="helper">Implementation of SMAPI's Mod Helper.</param>
         public override void Entry(IModHelper helper) {
-            helper.Events.GameLoop.GameLaunched += this.LoadAudioAssets;
+            helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
             helper.Events.Input.ButtonPressed += this.OnKeyPressed;
+
+            this.assetPath = Path.Combine(helper.DirectoryPath, "assets");
         }
 
         /// <summary>
@@ -29,11 +37,13 @@ namespace SAAT.ProtoMod {
         /// </summary>
         /// <param name="sender">The caller.</param>
         /// <param name="e">The event arguments.</param>
-        private void LoadAudioAssets(object sender, GameLaunchedEventArgs e) {
-            this.sinWaveCue = ProtoSAAT.CreateSoundEffect(Path.Combine(this.Helper.DirectoryPath, "assets", "SinWave.wav"), out var sfxInt);
+        private void OnGameLaunched(object sender, GameLaunchedEventArgs e) {
+            if (this.audioApi == null) {
+                this.audioApi = this.Helper.ModRegistry.GetApi<IAudioManager>(ProtoSAAT.ApiId);
+            }
 
-            sfxInt.IsLooped = true;
-            this.sinWaveSfx = sfxInt;
+            this.sinWaveCue = this.audioApi.Load("sinWav", Path.Combine(this.assetPath, "SinWave.wav"), Category.Sound);
+            this.sinOggCue = this.audioApi.Load("sinOgg", Path.Combine(this.assetPath, "SinWave.ogg"), Category.Sound);
         }
 
         /// <summary>
@@ -45,45 +55,21 @@ namespace SAAT.ProtoMod {
             var key = args.Button;
 
             switch (key) {
-                case SButton.D1:
+                case SButton.D1: // Stop everything! Now!
                     this.sinWaveCue.Stop(AudioStopOptions.Immediate);
-                    this.sinWaveSfx.Stop(true);
+                    this.sinOggCue.Stop(AudioStopOptions.Immediate);
                     break;
-                case SButton.D2:
+                case SButton.D2: 
                     this.sinWaveCue.Play();
                     break;
                 case SButton.D3:
-                    this.sinWaveSfx.Play();
+                    this.sinOggCue.Play();
                     break;
                 case SButton.D4:
                     break;
                 case SButton.D5:
                     break;
             }
-        }
-
-        /// <summary>
-        /// Creates <see cref="SoundEffect"/> objects and stores it into a <see cref="ICue"/> instance.
-        /// </summary>
-        /// <param name="path">The path to the .wav audio file.</param>
-        /// <param name="sfxInt">The <see cref="SoundEffectInstance"/> instance containing the <see cref="SoundEffect"/>.</param>
-        /// <returns>A newly created <see cref="ICue"/> instance.</returns>
-        private static ICue CreateSoundEffect(string path, out SoundEffectInstance sfxInt) {
-            SoundEffect sfx;
-
-            using (var stream = new FileStream(path, FileMode.Open)) {
-                sfx = SoundEffect.FromStream(stream);
-            }
-
-            // A little awkward, but this is the instance that can perform loops.
-            sfxInt = sfx.CreateInstance();
-
-            var category = Game1.audioEngine.GetCategoryIndex("Sound");
-            var cueBall = new CueDefinition("GiveMeASin", sfx, category);
-
-            Game1.soundBank.AddCue(cueBall);
-
-            return Game1.soundBank.GetCue("GiveMeASin");
         }
     }
 }

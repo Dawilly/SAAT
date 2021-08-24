@@ -1,0 +1,10 @@
+{
+    "Name": "SAAT.API",
+    "Author": "Pickles",
+    "Version": "1.0.0",
+    "Description": "Audio API for SMAPI",
+    "UniqueID": "Pickles.SAAT.API",
+    "EntryDll": "SAAT.API.dll",
+    "MinimumApiVersion": "3.0.0",
+    "UpdateKeys": []
+}
