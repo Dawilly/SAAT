@@ -1,0 +1,62 @@
+[
+    {
+        "Id": "CrimsonSands",
+        "Filepath": "CrimsonSands.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "OminousCavern",
+        "Filepath": "OminousCavern.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "EnchantedWaltz",
+        "Filepath": "EnchantedWaltz.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "SDV_Fireplace",
+        "Filepath": "SDV_Fireplace.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "CamillasTower",
+        "Filepath": "CamillasTower.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "Lament",
+        "Filepath": "Lament.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "HaruhiViolinSolo",
+        "Filepath": "HaruhiViolinSolo.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "NewMagicLearned",
+        "Filepath": "NewMagicLearned.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "Nexus",
+        "Filepath": "Nexus.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "CastleVillageOutpostAmbience",
+        "Filepath": "CastleVillageOutpostAmbience.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "GrenvilleFalls",
+        "Filepath": "GrenvilleFalls.wav",
+        "Category": "Music"
+    },
+    {
+        "Id": "Atlantis",
+        "Filepath": "Atlantis.wav",
+        "Category": "Music"
+    }
+]
