@@ -22,10 +22,9 @@ namespace SAAT.API {
         /// <summary>
         /// Callback method for the SMAPI Command.
         /// </summary>
-        /// <param name="argc"></param>
-        /// <param name="argv"></param>
-        private void ListMallocs(string argc, string[] argv) {
-            // This should be int, string[]. Reee.
+        /// <param name="command">The called command.</param>
+        /// <param name="argv">The argument value(s).</param>
+        private void ListMallocs(string command, string[] argv) {
             this.audioManager.PrintMemoryAllocationInfo();
         }
     }

@@ -14,7 +14,7 @@ namespace SAAT.API {
     /// </summary>
     public class AudioManager : IAudioManager {
         private readonly Dictionary<string, ICue> cueTable;
-        private readonly Dictionary<string, uint> memoryAllocationSize;
+        private readonly Dictionary<string, Track> trackTable;
 
         private readonly IAudioEngine engine;
         private readonly ISoundBank soundBank;
@@ -25,7 +25,7 @@ namespace SAAT.API {
         /// </summary>
         public AudioManager(IMonitor monitor) {
             this.cueTable = new Dictionary<string, ICue>();
-            this.memoryAllocationSize = new Dictionary<string, uint>();
+            this.trackTable = new Dictionary<string, Track>();
 
             this.engine = Game1.audioEngine;
             this.soundBank = Game1.soundBank;
@@ -34,7 +34,7 @@ namespace SAAT.API {
         }
 
         /// <inheritdoc/>
-        public ICue Load(string name, string path, Category category) {
+        public ICue Load(string owner, string name, string path, Category category) {
             if (this.cueTable.ContainsKey(name)) {
                 return this.cueTable[name];
             }
@@ -57,16 +57,31 @@ namespace SAAT.API {
             var cue = this.soundBank.GetCue(name);
 
             this.cueTable.Add(name, cue);
-            this.memoryAllocationSize.Add(name, byteSize);
+
+            var track = new Track {
+                BufferSize = byteSize,
+                Category = category,
+                Id = name,
+                Instance = cue,
+                Filepath = path,
+                Owner = owner
+            };
+
+            this.trackTable.Add(name, track);
 
             return cue;
         }
 
         /// <inheritdoc/>
         public void PrintMemoryAllocationInfo() {
-            this.monitor.Log($"##\tName\t\tSize (In Bytes)\t##", LogLevel.Info);
-            foreach (var kvp in this.memoryAllocationSize) {
-                this.monitor.Log($"  \t{kvp.Key}\t\t{kvp.Value}", LogLevel.Info);
+            string name = "Name";
+            string size = "Size (In Bytes)";
+            string owner = "Owner";
+
+            this.monitor.Log($"##\t{name.PadRight(40)}{size.PadRight(40)}{owner}\t##", LogLevel.Info);
+            foreach (var track in this.trackTable.Values) {
+                string bufferSize = $"{Track.BufferSizeInKilo(track)} KB";
+                this.monitor.Log($"  \t{track.Id.PadRight(40)}{bufferSize.PadRight(40)}{track.Owner}", LogLevel.Info);
             }
         }
 

@@ -23,6 +23,8 @@ namespace SAAT.ProtoMod {
         private ICue activeTrack;
         private int index;
 
+        public bool DebugMode { get; private set; }
+
         /// <summary>
         /// Creates a new instance of the <see cref="ProtoSAAT"/> class, an implementation of <see cref="Mod"/>.
         /// </summary>
@@ -30,6 +32,8 @@ namespace SAAT.ProtoMod {
             this.playList = new List<ICue>();
 
             this.index = -1;
+
+            this.DebugMode = false;
         }
 
         /// <summary>
@@ -38,9 +42,13 @@ namespace SAAT.ProtoMod {
         /// <param name="helper">Implementation of SMAPI's Mod Helper.</param>
         public override void Entry(IModHelper helper) {
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
-            helper.Events.Input.ButtonPressed += this.OnKeyPressed;
+
+            if (this.DebugMode) {
+                helper.Events.Input.ButtonPressed += this.OnKeyPressed;
+            }
 
             helper.ConsoleCommands.Add("gen_track_json", "Generates an example JSON file. Results will be tracks.json in the ProtoSAAT folder.", this.GenerateSampleJson);
+            helper.ConsoleCommands.Add("setdebug", "Sets the debugging state for ProtoSAAT, enabling playlist control for audio tracks.", this.EnableDebug);
         }
 
         /// <summary>
@@ -55,7 +63,7 @@ namespace SAAT.ProtoMod {
                 foreach (var track in jsonData) {
                     string path = Path.Combine(pack.DirectoryPath, track.Filepath);
 
-                    var cue = this.audioApi.Load(track.Id, path, track.Category);
+                    var cue = this.audioApi.Load(pack.Manifest.UniqueID, track.Id, path, track.Category);
 
                     this.playList.Add(cue);
                 }
@@ -108,11 +116,40 @@ namespace SAAT.ProtoMod {
         }
 
         /// <summary>
-        /// Command Callback that generates an example json file for SAAT.
+        /// Command callback that enables/disables debug mode.
         /// </summary>
-        /// <param name="argc">Number of command arguments.</param>
+        /// <param name="command">The called command.</param>
         /// <param name="argv">The argument value(s).</param>
-        private void GenerateSampleJson(string argc, string[] argv) {
+        private void EnableDebug(string command, string[] argv) {
+            if (argv.Length < 2) {
+                this.Monitor.Log("Insufficient command arguments. Syntax: setdebug <value>. Where <value> is either true or false.", LogLevel.Info);
+                return;
+            }
+
+            if (!bool.TryParse(argv[1], out bool results)) {
+                this.Monitor.Log("Unable to determine argument. Syntax: setdebug <value>. Where <value> is either true or false.", LogLevel.Info);
+                return;
+            }
+
+            if (results == this.DebugMode) {
+                return;
+            }
+
+            if (results) {
+                this.Helper.Events.Input.ButtonPressed += this.OnKeyPressed;
+            } else {
+                this.Helper.Events.Input.ButtonPressed -= this.OnKeyPressed;
+            }
+
+            this.DebugMode = results;
+        }
+
+        /// <summary>
+        /// Command callback that generates an example json file for SAAT.
+        /// </summary>
+        /// <param name="command">The called command.</param>
+        /// <param name="argv">The argument value(s).</param>
+        private void GenerateSampleJson(string command, string[] argv) {
             var tracks = new AudioTrack[2];
 
             tracks[0] = new AudioTrack("ExampleOne", "one.ogg", Category.Music);
