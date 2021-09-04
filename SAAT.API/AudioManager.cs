@@ -14,6 +14,7 @@ namespace SAAT.API {
     /// </summary>
     public class AudioManager : IAudioManager {
         private readonly Dictionary<string, ICue> cueTable;
+        private readonly Dictionary<string, uint> memoryAllocationSize;
 
         private readonly IAudioEngine engine;
         private readonly ISoundBank soundBank;
@@ -24,6 +25,7 @@ namespace SAAT.API {
         /// </summary>
         public AudioManager(IMonitor monitor) {
             this.cueTable = new Dictionary<string, ICue>();
+            this.memoryAllocationSize = new Dictionary<string, uint>();
 
             this.engine = Game1.audioEngine;
             this.soundBank = Game1.soundBank;
@@ -37,14 +39,35 @@ namespace SAAT.API {
                 return this.cueTable[name];
             }
 
-            var sfx = this.LoadFile(path);
+            SoundEffect sfx;
+            uint byteSize;
+
+            try {
+                sfx = AudioManager.LoadFile(path, out byteSize);
+            } catch (Exception e) {
+                this.monitor.Log($"Unable to load audio: {e.Message}\n{e.StackTrace}");
+                return null;
+            }
 
             // Am I being funny yet?
             var cueBall = new CueDefinition(name, sfx, (int)category);
 
+            // Need to add the defition to the bank in order to generate a cue.
             this.soundBank.AddCue(cueBall);
+            var cue = this.soundBank.GetCue(name);
 
-            return this.soundBank.GetCue(name);
+            this.cueTable.Add(name, cue);
+            this.memoryAllocationSize.Add(name, byteSize);
+
+            return cue;
+        }
+
+        /// <inheritdoc/>
+        public void PrintMemoryAllocationInfo() {
+            this.monitor.Log($"##\tName\t\tSize (In Bytes)\t##", LogLevel.Info);
+            foreach (var kvp in this.memoryAllocationSize) {
+                this.monitor.Log($"  \t{kvp.Key}\t\t{kvp.Value}", LogLevel.Info);
+            }
         }
 
         /// <summary>
@@ -53,26 +76,73 @@ namespace SAAT.API {
         /// </summary>
         /// <param name="path">The path to the audio file.</param>
         /// <returns>A newly created <see cref="SoundEffect"/> object. <see cref="null"/> if it failed to load.</returns>
-        private SoundEffect LoadFile(string path) {
-            try {
-                var type = Utilities.ParseAudioExtension(path);
+        private static SoundEffect LoadFile(string path, out uint byteSize) {
+            byteSize = 0;
 
-                using var stream = new FileStream(path, FileMode.Open);
+            var type = Utilities.ParseAudioExtension(path);
 
-                switch (type) {
-                    case AudioFileType.Wav:
-                        return SoundEffect.FromStream(stream);
-                    case AudioFileType.Ogg:
-                        return AudioManager.OpenOggFile(stream);
-                }
-            } catch (Exception e) {
-                this.monitor.Log($"Unable to load audio: {e.Message}\n{e.StackTrace}");
+            using var stream = new FileStream(path, FileMode.Open);
+
+            switch (type) {
+                case AudioFileType.Wav:
+                    return AudioManager.OpenWavFile(stream, out byteSize);
+                case AudioFileType.Ogg:
+                    return AudioManager.OpenOggFile(stream, out byteSize);
+                default:
+                    return null;
             }
-
-            return null;
         }
 
-        private static SoundEffect OpenOggFile(FileStream stream) {
+        /// <summary>
+        /// Loads the entire content of a .wav into memory.
+        /// </summary>
+        /// <param name="stream">The file stream pointing to the wav file.</param>
+        /// <param name="byteSize">The number of bytes needed for the audio data.</param>
+        /// <returns>A newly created <see cref="SoundEffect"/> object.</returns>
+        private static SoundEffect OpenWavFile(FileStream stream, out uint byteSize) {
+            byteSize = 0;
+
+            // We're gonna peak at the number of bytes before we pass this off.
+            using var reader = new BinaryReader(stream);
+            long riffDataSize = 0;
+
+            do {
+                string chunkId = new string(reader.ReadChars(4));
+                int chunkSize = reader.ReadInt32();
+
+                switch (chunkId) {
+                    case "RIFF":
+                        // Set filesize and toss out "WAVE".
+                        riffDataSize = chunkSize;
+                        reader.ReadChars(4); 
+                        break;
+                    case "fmt ":
+                        // Toss out.
+                        reader.ReadBytes(chunkSize);
+                        break;
+                    case "data":
+                        // Set byteSize, we're done.
+                        byteSize = (uint)chunkSize;
+                        break;
+                    default:
+                        reader.BaseStream.Seek((long)chunkSize, SeekOrigin.Current);
+                        break;
+                }
+            } while (byteSize == 0 && reader.BaseStream.Position < riffDataSize);
+
+            // Back to the top of the file.
+            stream.Position = 0;
+
+            return SoundEffect.FromStream(stream);
+        }
+
+        /// <summary>
+        /// Loads the entire content of an .ogg into memory.
+        /// </summary>
+        /// <param name="stream">The file stream pointing to the ogg file.</param>
+        /// <param name="byteSize">The number of bytes needed for the audio data.</param>
+        /// <returns>A newly created <see cref="SoundEffect"/> object.</returns>
+        private static SoundEffect OpenOggFile(FileStream stream, out uint byteSize) {
             using var reader = new VorbisReader(stream, true);
 
             // At the moment, we're loading everything in. If the number of samples is greater than int.MaxValue, bail.
@@ -82,23 +152,35 @@ namespace SAAT.API {
 
             int totalSamples = (int)reader.TotalSamples;
             int sampleRate = reader.SampleRate;
-            var channels = (AudioChannels)reader.Channels;
-
+            
+            // SoundEffect.SampleSizeInBytes has a fault within it. In conjunction with a small amount of percision loss,
+            // any decimal points are dropped instead of rounded up. For example: It will calculate the buffer size to be
+            // 2141.999984, returning 2141. This should be 2142, as it violates block alignment below.
+            int bufferSize = (int)Math.Ceiling(reader.TotalTime.TotalSeconds * (sampleRate * reader.Channels * 16d / 8d));
+            byte[] buffer = new byte[bufferSize];
             float[] vorbisBuffer = new float[totalSamples];
-            byte[] buffer = new byte[SoundEffect.GetSampleSizeInBytes(reader.TotalTime, sampleRate, channels)];
 
-            reader.ReadSamples(vorbisBuffer, 0, totalSamples);
+            int sampleReadings = reader.ReadSamples(vorbisBuffer, 0, totalSamples);
 
-            // TO-DO: Fix
-            // Turns out we need to convert everything to uncompressed 16-bit PCM.
-            // This doesn't properly convert. We can't throw float points into the data set. 
-            for (int i = 0; i < totalSamples; i++) {
-                int count = Math.Min(buffer.Length - (i * sizeof(float)), sizeof(float));
-                var segment = new ArraySegment<byte>(buffer, i * sizeof(float), count);
-                BitConverter.TryWriteBytes(segment, vorbisBuffer[i]);
+            // This shouldn't occur. Check just incase and bail out if so.
+            if (sampleReadings == 0) {
+                throw new Exception("Unable to read samples from Ogg file.");
             }
 
-            return new SoundEffect(buffer, sampleRate, channels);
+            // Buffers within SoundEffect instances MUST be block aligned. By 2 for Mono, 4 for Stereo.
+            int blockAlign = reader.Channels * 2;
+            sampleReadings -= sampleReadings % blockAlign;
+
+            // Must convert the audio data to 16-bit PCM, as this is the only format SoundEffect supports.
+            for (int i = 0; i < sampleReadings; i++) {
+                short sh = (short)Math.Max(Math.Min(short.MaxValue * vorbisBuffer[i], short.MaxValue), short.MinValue);
+                buffer[i * 2] = (byte)(sh & 0xff);
+                buffer[i * 2 + 1] = (byte)((sh >> 8) & 0xff);
+            }
+
+            byteSize = (uint)buffer.Length;
+
+            return new SoundEffect(buffer, sampleRate, (AudioChannels)reader.Channels);
         }
     }
 }
