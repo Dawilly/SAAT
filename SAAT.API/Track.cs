@@ -25,12 +25,24 @@ namespace SAAT.API {
         /// <summary>Gets or sets the unique identification of the owner (mod).</summary>
         public string Owner { get; set; }
 
-        public static double BufferSizeInKilo(Track track) {
+        public static double BufferSizeInKilo(Track track)
+        {
             return Math.Round((double)track.BufferSize / 1024, 2);
         }
 
-        public static double BufferSizeInMega(Track track) {
+        public static double BufferSizeInMega(Track track)
+        {
             return Math.Round((double)track.BufferSize / 1048576, 2);
+        }
+
+        public static double BufferSizeInKilo(uint bufferSize)
+        {
+            return Math.Round((double)bufferSize / 1024, 2);
+        }
+
+        public static double BufferSizeInMega(uint bufferSize)
+        {
+            return Math.Round((double)bufferSize / 1048576, 2);
         }
     }
 }

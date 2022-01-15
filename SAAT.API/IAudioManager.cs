@@ -1,10 +1,12 @@
 ﻿using StardewValley;
 
-namespace SAAT.API {
+namespace SAAT.API
+{
     /// <summary>
     /// API reference that provides access to the audio manager and its functionality.
     /// </summary>
-    public interface IAudioManager {
+    public interface IAudioManager
+    {
         /// <summary>
         /// Loads an audio asset.
         /// </summary>

@@ -1,10 +1,12 @@
 ﻿using SAAT.API;
 
-namespace SAAT.ProtoMod {
+namespace SAAT.Mod
+{
     /// <summary>
     /// Data container class that details a content pack entry for audio.
     /// </summary>
-    public class AudioTrack {
+    public class AudioTrack
+    {
         /// <summary>Gets or sets the identification of the track.</summary>
         public string Id { get; set; }
 
@@ -25,7 +27,8 @@ namespace SAAT.ProtoMod {
         /// <param name="id">Identification of the track.</param>
         /// <param name="filePath">Relative file path to the audio file.</param>
         /// <param name="category">SoundBank category the track belongs to.</param>
-        public AudioTrack(string id, string filePath, Category category) {
+        public AudioTrack(string id, string filePath, Category category)
+        {
             this.Id = id;
             this.Filepath = filePath;
             this.Category = category;

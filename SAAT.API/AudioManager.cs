@@ -8,43 +8,52 @@ using NVorbis;
 using StardewModdingAPI;
 using StardewValley;
 
-namespace SAAT.API {
+namespace SAAT.API
+{
     /// <summary>
     /// Implementation of <see cref="IAudioManager"/>. Handles all operations regarding audio.
     /// </summary>
-    public class AudioManager : IAudioManager {
+    public class AudioManager : IAudioManager
+    {
         private readonly Dictionary<string, ICue> cueTable;
         private readonly Dictionary<string, Track> trackTable;
 
-        private readonly IAudioEngine engine;
+        //TO-DO: Implement an engine that handles memory management appropriately, instead of ad-hoc.
+        //private readonly IAudioEngine engine;
         private readonly ISoundBank soundBank;
         private readonly IMonitor monitor;
 
         /// <summary>
         /// Creates a new instance of the <see cref="AudioManager"/> class.
         /// </summary>
-        public AudioManager(IMonitor monitor) {
+        public AudioManager(IMonitor monitor)
+        {
             this.cueTable = new Dictionary<string, ICue>();
             this.trackTable = new Dictionary<string, Track>();
 
-            this.engine = Game1.audioEngine;
+            //this.engine = Game1.audioEngine;
             this.soundBank = Game1.soundBank;
 
             this.monitor = monitor;
         }
 
         /// <inheritdoc/>
-        public ICue Load(string owner, string name, string path, Category category) {
-            if (this.cueTable.ContainsKey(name)) {
+        public ICue Load(string owner, string name, string path, Category category)
+        {
+            if (this.cueTable.ContainsKey(name))
+            {
                 return this.cueTable[name];
             }
 
             SoundEffect sfx;
             uint byteSize;
 
-            try {
+            try
+            {
                 sfx = AudioManager.LoadFile(path, out byteSize);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 this.monitor.Log($"Unable to load audio: {e.Message}\n{e.StackTrace}");
                 return null;
             }
@@ -73,16 +82,42 @@ namespace SAAT.API {
         }
 
         /// <inheritdoc/>
-        public void PrintMemoryAllocationInfo() {
+        public void PrintMemoryAllocationInfo()
+        {
+            var subTotals = new Dictionary<string, uint>();
+
             string name = "Name";
             string size = "Size (In Bytes)";
             string owner = "Owner";
 
             this.monitor.Log($"##\t{name.PadRight(40)}{size.PadRight(40)}{owner}\t##", LogLevel.Info);
-            foreach (var track in this.trackTable.Values) {
+
+            foreach (var track in this.trackTable.Values)
+            {
+                if (!subTotals.ContainsKey(track.Owner))
+                {
+                    subTotals.Add(track.Owner, track.BufferSize);
+                }
+                else
+                {
+                    subTotals[track.Owner] += track.BufferSize;
+                }
+
                 string bufferSize = $"{Track.BufferSizeInKilo(track)} KB";
                 this.monitor.Log($"  \t{track.Id.PadRight(40)}{bufferSize.PadRight(40)}{track.Owner}", LogLevel.Info);
             }
+
+            uint total = 0;
+            this.monitor.Log($"\n\n##\t {name.PadRight(40)}{size}\t##", LogLevel.Info);
+
+            foreach (var kvp in subTotals)
+            {
+                total += kvp.Value;
+                string bufferSize = $"{Track.BufferSizeInMega(kvp.Value)} MB";
+                this.monitor.Log($"  \t{kvp.Key.PadRight(40)}{bufferSize}", LogLevel.Info);
+            }
+
+            this.monitor.Log($"Total Memory Usage: {Track.BufferSizeInMega(total)} MB", LogLevel.Info);
         }
 
         /// <summary>
@@ -91,7 +126,8 @@ namespace SAAT.API {
         /// </summary>
         /// <param name="path">The path to the audio file.</param>
         /// <returns>A newly created <see cref="SoundEffect"/> object. <see cref="null"/> if it failed to load.</returns>
-        private static SoundEffect LoadFile(string path, out uint byteSize) {
+        private static SoundEffect LoadFile(string path, out uint byteSize)
+        {
             byteSize = 0;
 
             var type = Utilities.ParseAudioExtension(path);
@@ -101,6 +137,7 @@ namespace SAAT.API {
             switch (type) {
                 case AudioFileType.Wav:
                     return AudioManager.OpenWavFile(stream, out byteSize);
+
                 case AudioFileType.Ogg:
                     return AudioManager.OpenOggFile(stream, out byteSize);
                 default:
@@ -114,7 +151,8 @@ namespace SAAT.API {
         /// <param name="stream">The file stream pointing to the wav file.</param>
         /// <param name="byteSize">The number of bytes needed for the audio data.</param>
         /// <returns>A newly created <see cref="SoundEffect"/> object.</returns>
-        private static SoundEffect OpenWavFile(FileStream stream, out uint byteSize) {
+        private static SoundEffect OpenWavFile(FileStream stream, out uint byteSize)
+        {
             byteSize = 0;
 
             // We're gonna peak at the number of bytes before we pass this off.
@@ -131,14 +169,17 @@ namespace SAAT.API {
                         riffDataSize = chunkSize;
                         reader.ReadChars(4); 
                         break;
+
                     case "fmt ":
                         // Toss out.
                         reader.ReadBytes(chunkSize);
                         break;
+
                     case "data":
                         // Set byteSize, we're done.
                         byteSize = (uint)chunkSize;
                         break;
+
                     default:
                         reader.BaseStream.Seek((long)chunkSize, SeekOrigin.Current);
                         break;
@@ -157,11 +198,13 @@ namespace SAAT.API {
         /// <param name="stream">The file stream pointing to the ogg file.</param>
         /// <param name="byteSize">The number of bytes needed for the audio data.</param>
         /// <returns>A newly created <see cref="SoundEffect"/> object.</returns>
-        private static SoundEffect OpenOggFile(FileStream stream, out uint byteSize) {
+        private static SoundEffect OpenOggFile(FileStream stream, out uint byteSize)
+        {
             using var reader = new VorbisReader(stream, true);
 
             // At the moment, we're loading everything in. If the number of samples is greater than int.MaxValue, bail.
-            if (reader.TotalSamples > int.MaxValue) {
+            if (reader.TotalSamples > int.MaxValue)
+            {
                 throw new Exception("TotalSample overflow");
             }
 
@@ -178,7 +221,8 @@ namespace SAAT.API {
             int sampleReadings = reader.ReadSamples(vorbisBuffer, 0, totalSamples);
 
             // This shouldn't occur. Check just incase and bail out if so.
-            if (sampleReadings == 0) {
+            if (sampleReadings == 0)
+            {
                 throw new Exception("Unable to read samples from Ogg file.");
             }
 
@@ -187,7 +231,8 @@ namespace SAAT.API {
             sampleReadings -= sampleReadings % blockAlign;
 
             // Must convert the audio data to 16-bit PCM, as this is the only format SoundEffect supports.
-            for (int i = 0; i < sampleReadings; i++) {
+            for (int i = 0; i < sampleReadings; i++)
+            {
                 short sh = (short)Math.Max(Math.Min(short.MaxValue * vorbisBuffer[i], short.MaxValue), short.MinValue);
                 buffer[i * 2] = (byte)(sh & 0xff);
                 buffer[i * 2 + 1] = (byte)((sh >> 8) & 0xff);
