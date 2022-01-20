@@ -20,8 +20,10 @@ namespace SAAT.API
 
         //TO-DO: Implement an engine that handles memory management appropriately, instead of ad-hoc.
         //private readonly IAudioEngine engine;
-        private readonly ISoundBank soundBank;
         private readonly IMonitor monitor;
+
+        /// <inheritdoc/>
+        public ISoundBank SoundBank { get; }
 
         /// <summary>
         /// Creates a new instance of the <see cref="AudioManager"/> class.
@@ -32,7 +34,7 @@ namespace SAAT.API
             this.trackTable = new Dictionary<string, Track>();
 
             //this.engine = Game1.audioEngine;
-            this.soundBank = Game1.soundBank;
+            this.SoundBank = Game1.soundBank;
 
             this.monitor = monitor;
         }
@@ -62,8 +64,8 @@ namespace SAAT.API
             var cueBall = new CueDefinition(name, sfx, (int)category);
 
             // Need to add the defition to the bank in order to generate a cue.
-            this.soundBank.AddCue(cueBall);
-            var cue = this.soundBank.GetCue(name);
+            this.SoundBank.AddCue(cueBall);
+            var cue = this.SoundBank.GetCue(name);
 
             this.cueTable.Add(name, cue);
 

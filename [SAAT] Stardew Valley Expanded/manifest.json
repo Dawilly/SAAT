@@ -6,7 +6,7 @@
   "UniqueID": "FlashShifter.SVEMusic",
   "UpdateKeys": [ "Nexus:???" ],
   "ContentPackFor": {
-    "UniqueID": "ZeroMeters.SAAT.ProtoMod",
+    "UniqueID": "ZeroMeters.SAAT.Mod",
     "MinimumVersion": "1.0.0"
   }
 }

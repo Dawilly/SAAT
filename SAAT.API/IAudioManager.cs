@@ -7,6 +7,9 @@ namespace SAAT.API
     /// </summary>
     public interface IAudioManager
     {
+        /// <summary>Gets the implementation of the sound bank used by Stardew Valley.</summary>
+        ISoundBank SoundBank { get; }
+
         /// <summary>
         /// Loads an audio asset.
         /// </summary>

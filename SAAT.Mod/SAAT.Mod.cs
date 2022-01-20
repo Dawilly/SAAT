@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 using Microsoft.Xna.Framework.Audio;
@@ -48,6 +49,7 @@ namespace SAAT.Mod {
         public override void Entry(IModHelper helper)
         {
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
+            helper.Events.GameLoop.SaveLoaded += this.ValidateMusicList;
 
             if (this.DebugMode)
             {
@@ -56,6 +58,35 @@ namespace SAAT.Mod {
 
             helper.ConsoleCommands.Add("gen_track_json", "Generates an example JSON file. Results will be tracks.json in the SAAT.Mod folder.", this.GenerateSampleJson);
             helper.ConsoleCommands.Add("setdebug", "Sets the debugging state for SAAT.Mod, enabling playlist control for audio tracks.", this.EnableDebug);
+        }
+
+        /// <summary>
+        /// Validates <see cref="Farmer.songsHeard"/>, removing any audio tracks that no longer exists.
+        /// </summary>
+        /// <param name="sender">The caller.</param>
+        /// <param name="args">Event args</param>
+        /// <remarks>Safety measure taken when end user removes mods with audio tracks.</remarks>
+        private void ValidateMusicList(object sender, SaveLoadedEventArgs args)
+        {
+            var list = Game1.player.songsHeard.ToList();
+            var soundBank = this.audioApi.SoundBank;
+
+            foreach (string item in list)
+            {
+                // TO-DO: On audio engine replacement, we will no longer need to try-catch.
+                // A non-existing audio file will result in a null being returned.
+                // For now... this a bit of a performance cost.
+                // Issue: XNA/MG underengineered Audio Engine.
+                try
+                {
+                    _ = soundBank.GetCueDefinition(item);
+                }
+                catch (ArgumentException)
+                {
+                    this.Monitor.VerboseLog($"Failed to find {item} in the sound bank. Removing from player's audio library (songsHeard).");
+                    Game1.player.songsHeard.Remove(item);
+                }
+            }
         }
 
         /// <summary>
@@ -186,6 +217,8 @@ namespace SAAT.Mod {
         private void PlayNextTrack()
         {
             this.activeTrack = this.playList[this.index];
+
+            this.Monitor.Log($"Now playing: {this.activeTrack.Name}");
 
             this.activeTrack.Play();
         }
