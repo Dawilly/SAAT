@@ -7,6 +7,7 @@ using System.Threading;
 using Microsoft.Xna.Framework.Audio;
 
 using SAAT.API;
+using SAAT.Mod.Serialization;
 
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
@@ -24,6 +25,9 @@ namespace SAAT.Mod {
         private const string ContentPackFilename = "tracks.json";
 
         private IAudioManager audioApi;
+        private List<ICue> addOnNewGame;
+
+        // For Debug Functionality
         private List<ICue> playList;
         private ICue activeTrack;
         private int index;
@@ -35,6 +39,7 @@ namespace SAAT.Mod {
         /// </summary>
         public SAATMod()
         {
+            this.addOnNewGame = new List<ICue>();
             this.playList = new List<ICue>();
 
             this.index = -1;
@@ -49,6 +54,7 @@ namespace SAAT.Mod {
         public override void Entry(IModHelper helper)
         {
             helper.Events.GameLoop.GameLaunched += this.OnGameLaunched;
+            helper.Events.GameLoop.SaveCreating += this.OnSaveCreation;
             helper.Events.GameLoop.SaveLoaded += this.ValidateMusicList;
 
             if (this.DebugMode)
@@ -56,15 +62,31 @@ namespace SAAT.Mod {
                 helper.Events.Input.ButtonPressed += this.OnKeyPressed;
             }
 
-            helper.ConsoleCommands.Add("gen_track_json", "Generates an example JSON file. Results will be tracks.json in the SAAT.Mod folder.", this.GenerateSampleJson);
-            helper.ConsoleCommands.Add("setdebug", "Sets the debugging state for SAAT.Mod, enabling playlist control for audio tracks.", this.EnableDebug);
+            helper.ConsoleCommands.Add("tracktemplate", "Generates an example JSON file. Results will be tracks.json in the SAAT.Mod folder.", this.GenerateSampleJson);
+            helper.ConsoleCommands.Add("audiodebug", "Sets the debugging state for SAAT.Mod, enabling playlist control for audio tracks.", this.EnableDebug);
+        }
+
+        /// <summary>
+        /// Callback method on the event a newly created game is about to be saved to disk.
+        /// </summary>
+        /// <param name="sender">The caller.</param>
+        /// <param name="e">Event arguments.</param>
+        private void OnSaveCreation(object sender, SaveCreatingEventArgs e)
+        {
+            foreach (var item in this.addOnNewGame)
+            {
+                if (!this.audioApi.AddToJukebox(item.Name, out var errorCode))
+                {
+                    this.Monitor.Log($"Unable to add audio to jukebox's playlist {errorCode}", LogLevel.Warn);
+                }
+            }
         }
 
         /// <summary>
         /// Validates <see cref="Farmer.songsHeard"/>, removing any audio tracks that no longer exists.
         /// </summary>
         /// <param name="sender">The caller.</param>
-        /// <param name="args">Event args</param>
+        /// <param name="args">Event arguments.</param>
         /// <remarks>Safety measure taken when end user removes mods with audio tracks.</remarks>
         private void ValidateMusicList(object sender, SaveLoadedEventArgs args)
         {
@@ -104,9 +126,20 @@ namespace SAAT.Mod {
                 {
                     string path = Path.Combine(pack.DirectoryPath, track.Filepath);
 
-                    var cue = this.audioApi.Load(pack.Manifest.UniqueID, track.Id, path, track.Category);
+                    var createInfo = new CreateAudioInfo {
+                        Category = track.Category,
+                        Loop = track.Settings.Loop,
+                        Name = track.Id
+                    };
+
+                    var cue = this.audioApi.Load(path, pack.Manifest.UniqueID, createInfo);
 
                     this.playList.Add(cue);
+
+                    if (track.Settings.AddToJukebox)
+                    {
+                        this.addOnNewGame.Add(cue);
+                    }
                 }
             }
         }
@@ -206,6 +239,8 @@ namespace SAAT.Mod {
             var tracks = new AudioTrack[2];
 
             tracks[0] = new AudioTrack("ExampleOne", "one.ogg", Category.Music);
+            tracks[0].Settings.Loop = true;
+
             tracks[1] = new AudioTrack("ExampleTwo", "two.wav", Category.Sound);
 
             this.Helper.Data.WriteJsonFile("tracks.json", tracks);

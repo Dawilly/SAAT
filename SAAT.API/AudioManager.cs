@@ -40,11 +40,40 @@ namespace SAAT.API
         }
 
         /// <inheritdoc/>
-        public ICue Load(string owner, string name, string path, Category category)
+        public bool AddToJukebox(string name, out AudioOperationError error)
         {
-            if (this.cueTable.ContainsKey(name))
+            // TO-DO: On audio engine replacement, we will no longer need to try-catch.
+            // A non-existing audio file will result in a null being returned.
+            // For now... this a bit of a performance cost.
+            // Issue: XNA/MG underengineered Audio Engine.
+            try
             {
-                return this.cueTable[name];
+                _ = this.SoundBank.GetCueDefinition(name);
+            }
+            catch (ArgumentException)
+            {
+                error = AudioOperationError.AssetNotFound;
+                return false;
+            }
+
+            if (Game1.player.songsHeard.Contains(name))
+            {
+                error = AudioOperationError.Exists;
+                return false;
+            }
+
+            Game1.player.songsHeard.Add(name);
+            error = AudioOperationError.None;
+
+            return true;
+        }
+
+        /// <inheritdoc/>
+        public ICue Load(string filePath, string owner, CreateAudioInfo createInfo)
+        {
+            if (this.cueTable.ContainsKey(createInfo.Name))
+            {
+                return this.cueTable[createInfo.Name];
             }
 
             SoundEffect sfx;
@@ -52,7 +81,7 @@ namespace SAAT.API
 
             try
             {
-                sfx = AudioManager.LoadFile(path, out byteSize);
+                sfx = AudioManager.LoadFile(filePath, out byteSize);
             }
             catch (Exception e)
             {
@@ -61,24 +90,25 @@ namespace SAAT.API
             }
 
             // Am I being funny yet?
-            var cueBall = new CueDefinition(name, sfx, (int)category);
+            var cueBall = new CueDefinition(createInfo.Name, sfx, (int)createInfo.Category, createInfo.Loop);
 
             // Need to add the defition to the bank in order to generate a cue.
             this.SoundBank.AddCue(cueBall);
-            var cue = this.SoundBank.GetCue(name);
+            var cue = this.SoundBank.GetCue(createInfo.Name);
 
-            this.cueTable.Add(name, cue);
+            this.cueTable.Add(createInfo.Name, cue);
 
             var track = new Track {
                 BufferSize = byteSize,
-                Category = category,
-                Id = name,
+                Category = createInfo.Category,
+                Filepath = filePath,
+                Id = createInfo.Name,
                 Instance = cue,
-                Filepath = path,
+                Loop = createInfo.Loop,
                 Owner = owner
             };
 
-            this.trackTable.Add(name, track);
+            this.trackTable.Add(createInfo.Name, track);
 
             return cue;
         }
@@ -89,10 +119,10 @@ namespace SAAT.API
             var subTotals = new Dictionary<string, uint>();
 
             string name = "Name";
-            string size = "Size (In Bytes)";
+            string size = "Size (In Kilobytes)";
             string owner = "Owner";
 
-            this.monitor.Log($"##\t{name.PadRight(40)}{size.PadRight(40)}{owner}\t##", LogLevel.Info);
+            this.monitor.Log($"##\t{name,-40}{size,-40}{owner}\t##", LogLevel.Info);
 
             foreach (var track in this.trackTable.Values)
             {
@@ -105,21 +135,39 @@ namespace SAAT.API
                     subTotals[track.Owner] += track.BufferSize;
                 }
 
-                string bufferSize = $"{Track.BufferSizeInKilo(track)} KB";
-                this.monitor.Log($"  \t{track.Id.PadRight(40)}{bufferSize.PadRight(40)}{track.Owner}", LogLevel.Info);
+                string bufferSize = $"{Utilities.BufferSizeInKilo(track)} KB";
+                this.monitor.Log($"  \t{track.Id,-40}{bufferSize,-40}{track.Owner}", LogLevel.Info);
             }
 
             uint total = 0;
-            this.monitor.Log($"\n\n##\t {name.PadRight(40)}{size}\t##", LogLevel.Info);
+            this.monitor.Log($"##\t {name,-40}{size}\t##", LogLevel.Info);
 
             foreach (var kvp in subTotals)
             {
                 total += kvp.Value;
-                string bufferSize = $"{Track.BufferSizeInMega(kvp.Value)} MB";
-                this.monitor.Log($"  \t{kvp.Key.PadRight(40)}{bufferSize}", LogLevel.Info);
+                string bufferSize = $"{Utilities.BufferSizeInMega(kvp.Value)} MB";
+                this.monitor.Log($"  \t{kvp.Key,-40}{bufferSize}", LogLevel.Info);
             }
 
-            this.monitor.Log($"Total Memory Usage: {Track.BufferSizeInMega(total)} MB", LogLevel.Info);
+            this.monitor.Log($"Total Memory Usage: {Utilities.BufferSizeInMega(total)} MB", LogLevel.Info);
+        }
+
+        /// <inheritdoc/>
+        public void PrintTrackAllocationAndSettings(string id)
+        {
+            if (!this.trackTable.TryGetValue(id, out var track))
+            {
+                this.monitor.Log($"Could not find track with the Id: {id}", LogLevel.Info);
+                return;
+            }
+
+            this.monitor.Log($"Track Id: {track.Id}", LogLevel.Info);
+            this.monitor.Log($"File: {track.Filepath}", LogLevel.Info);
+            this.monitor.Log($"Size: {Utilities.BufferSizeInKilo(track)} KB", LogLevel.Info);
+            this.monitor.Log($"Owner: {track.Owner}\n", LogLevel.Info);
+
+            this.monitor.Log($"Category: {track.Category}", LogLevel.Info);
+            this.monitor.Log($"Is Looping: {track.Loop}", LogLevel.Info);
         }
 
         /// <summary>

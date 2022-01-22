@@ -1,6 +1,6 @@
 ﻿using SAAT.API;
 
-namespace SAAT.Mod
+namespace SAAT.Mod.Serialization
 {
     /// <summary>
     /// Data container class that details a content pack entry for audio.
@@ -15,6 +15,9 @@ namespace SAAT.Mod
 
         /// <summary>Gets or sets the SoundBank category the track belongs to.</summary>
         public Category Category { get; set; }
+
+        /// <summary>Gets the parameters detailing the audio track's settings.</summary>
+        public AudioTrackSettings Settings { get; set; } = new AudioTrackSettings();
 
         /// <summary>
         /// Creates a new instance of the <see cref="AudioTrack"/> class.

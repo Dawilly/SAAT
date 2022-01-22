@@ -13,7 +13,7 @@ namespace SAAT.API {
         {
             this.audioManager = new AudioManager(this.Monitor);
 
-            helper.ConsoleCommands.Add("audio_allocs", "Prints all memory allocations for audio, by the individual tracks.", this.ListMallocs);
+            helper.ConsoleCommands.Add("audioallocs", "Print the memory allocations for a specific audio track or all audio tracks.", this.ListMallocs);
         }
 
         /// <inheritdoc/>
@@ -29,6 +29,12 @@ namespace SAAT.API {
         /// <param name="argv">The argument value(s).</param>
         private void ListMallocs(string command, string[] argv)
         {
+            if (argv.Length > 0)
+            {
+                this.audioManager.PrintTrackAllocationAndSettings(argv[0]);
+                return;
+            }
+
             this.audioManager.PrintMemoryAllocationInfo();
         }
     }
