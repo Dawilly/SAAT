@@ -119,7 +119,7 @@ An example of a `tracks.json` file loading three audio tracks.
 
 ```
 
-You can also generate an example `tracks.json` by starting SMAPI with SAAT.Mod and SAAT.API installed and typing `gen_track_json` into the console.
+You can also generate an example `tracks.json` by starting SMAPI with SAAT.Mod and SAAT.API installed and typing `tracktemplate` into the console.
 The file will be written out in the SAAT.Mod folder.
 
 #### Migrating from Custom Music
@@ -130,9 +130,9 @@ After you convert your content.json to a tracks.json, in your map files and even
 
 #### Debugging & Visibility
 
-You can observe which audio tracks are loaded by typing `audio_allocs` into the SMAPI console. This command only requires SAAT.API to be installed.
+You can observe which audio tracks are loaded by typing `audioallocs` into the SMAPI console. This command only requires SAAT.API to be installed. You can also print out a detailed listing of a specific audio track by typing `audioallocs [id]`, where `[id]` is a valid audio id / name.
 
-You can determine if the audio tracks loaded in properly by forcibily playing them in a playlist style operation. With SAAT.API and SAAT.Mod installed, typing `setdebug true` into the SMAPI console enables the debug feature. Once activated, you can use the following keys to cycle through the loaded tracks:
+You can determine if the audio tracks loaded in properly by forcibily playing them in a playlist style operation. With SAAT.API and SAAT.Mod installed, typing `audiodebug true` into the SMAPI console enables the debug feature. Once activated, you can use the following keys to cycle through the loaded tracks:
 
 | Key | Function                |
 |-----|-------------------------|
