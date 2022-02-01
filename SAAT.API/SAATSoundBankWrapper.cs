@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
+
 using Microsoft.Xna.Framework.Audio;
 
 using StardewModdingAPI;
 
 using StardewValley;
+
+[assembly: InternalsVisibleTo("SAAT.Mod")]
 
 namespace SAAT.API
 {
@@ -26,6 +29,8 @@ namespace SAAT.API
 
         /// <summary>Gets a value indicating if the sound bank has been disposed of.</summary>
         public bool IsDisposed => this.disposed;
+
+        internal ISoundBank VanillaSoundBank => this.sdvSoundBankWrapper;
 
         /// <summary>
         /// Create a new instance of the <see cref="SAATSoundBankWrapper"/> class, an implementation of <see cref="ISoundBank"/>.
