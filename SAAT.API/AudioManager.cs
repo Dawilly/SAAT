@@ -278,14 +278,15 @@ namespace SAAT.API
             using var reader = new VorbisReader(stream, true);
 
             // At the moment, we're loading everything in. If the number of samples is greater than int.MaxValue, bail.
-            if (reader.TotalSamples > int.MaxValue)
+            if (reader.TotalSamples * reader.Channels > int.MaxValue)
             {
                 throw new Exception("TotalSample overflow");
             }
 
-            int totalSamples = (int)reader.TotalSamples;
+            // The samples to read has to be adjusted for mono/stereo.
+            int totalSamples = (int)reader.TotalSamples * reader.Channels;
             int sampleRate = reader.SampleRate;
-            
+
             // SoundEffect.SampleSizeInBytes has a fault within it. In conjunction with a small amount of percision loss,
             // any decimal points are dropped instead of rounded up. For example: It will calculate the buffer size to be
             // 2141.999984, returning 2141. This should be 2142, as it violates block alignment below.
