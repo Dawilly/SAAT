@@ -64,6 +64,10 @@ namespace SAAT.API
         {
             this.sdvSoundBankWrapper.AddCue(cueDefinition);
         }
+        public bool Exists(string name)
+        {
+            return sdvSoundBankWrapper.Exists(name);
+        }
 
         /// <inheritdoc/>
         public void Dispose()
